@@ -7,10 +7,15 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MapReduce {
 
     public static void main(String[] args) {
+
+        //TODO make this a command line input
+        int poolSize = args.length;
 
         //PART 1 - Taking input from a list of text files
         Map<String, String> input = new HashMap<String, String>();
@@ -134,9 +139,8 @@ public class MapReduce {
                 }
             };
 
-            List<Thread> mapCluster = new ArrayList<Thread>(input.size());
-
             Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
+            ExecutorService mapPool = Executors.newFixedThreadPool(poolSize);
             while(inputIter.hasNext()) {
                 Map.Entry<String, String> entry = inputIter.next();
                 final String file = entry.getKey();
@@ -148,18 +152,17 @@ public class MapReduce {
                         map(file, contents, mapCallback);
                     }
                 });
-                mapCluster.add(t);
-                t.start();
+                //Adding thread to threadpool
+                mapPool.execute(t);
             }
-
-            // wait for mapping phase to be over:
-            for(Thread t : mapCluster) {
-                try {
-                    t.join();
-                } catch(InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+            //Ensures all threads complete
+            mapPool.shutdown();
+            long mapTimer = 0;
+            //Not sure if this is good practice
+            while (!mapPool.isTerminated()) {
+                mapTimer++;
             }
+            System.out.println("Finished all map threads in " + mapTimer + " iterations");
 
             // GROUP:
 
@@ -187,9 +190,8 @@ public class MapReduce {
                 }
             };
 
-            List<Thread> reduceCluster = new ArrayList<Thread>(groupedItems.size());
-
             Iterator<Map.Entry<String, List<String>>> groupedIter = groupedItems.entrySet().iterator();
+            ExecutorService reducePool = Executors.newFixedThreadPool(poolSize);
             while(groupedIter.hasNext()) {
                 Map.Entry<String, List<String>> entry = groupedIter.next();
                 final String word = entry.getKey();
@@ -201,18 +203,17 @@ public class MapReduce {
                         reduce(word, list, reduceCallback);
                     }
                 });
-                reduceCluster.add(t);
-                t.start();
+                reducePool.execute(t);
             }
 
-            // wait for reducing phase to be over:
-            for(Thread t : reduceCluster) {
-                try {
-                    t.join();
-                } catch(InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+            //Ensures all threads complete
+            reducePool.shutdown();
+            long reduceTimer = 0;
+            //Not sure if this is good practice
+            while (!reducePool.isTerminated()) {
+                reduceTimer++;
             }
+            System.out.println("Finished all reduce threads in " + reduceTimer + " iterations");
 
             System.out.println(output);
         }
