@@ -18,7 +18,7 @@ public class MapReduce {
         System.out.println("Enter the number of files in database:");
         int poolSize = reader.nextInt();
 
-        //PART 1 -
+        //PART 1 - la la
         Map<String, String> input = new HashMap<String, String>();
         for(String fileName:args) {
             String everything = "";
