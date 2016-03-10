@@ -13,68 +13,104 @@ public class MapReduce {
 
     public static void main(String[] args) {
 
-        // get number of files to be reduced from the user
-        Scanner reader = new Scanner(System.in);
-        System.out.println("Enter the number of files in database:");
-        int poolSize = reader.nextInt();
+//        // get number of files to be reduced from the user
+//        Scanner reader = new Scanner(System.in);
+//        System.out.println("Enter the number of files in database:");
+//        int poolSize = reader.nextInt();
 
-        //PART 1 - la la
+        //PART 1
+        // create an input with the name of a file and a String
+        // containing every word in the file
         Map<String, String> input = new HashMap<String, String>();
+        // get names of the files to search from the program arguments
         for(String fileName:args) {
             String everything = "";
             try {
+                // create a buffered reader and read each line of the file
                 BufferedReader br = new BufferedReader(new FileReader(fileName));
+                // for concatenating multiple strings in a loop
+                // much faster than String object in loop concatenation
                 StringBuilder sb = new StringBuilder();
+                // read a line from the file
                 String line = br.readLine();
 
+                // if the line of the file contains text
                 while (line != null) {
+                    // add the line of the text to the string builder
                     sb.append(line);
+                    // add line separator after each line
+                    // this ensures words at the beginning and end of new lines
+                    // do not concatenate as one
                     sb.append(System.lineSeparator());
+                    // read the next line of the file
                     line = br.readLine();
                 }
+                // convert the string builder to a String containing
+                // the entire file
                 everything = sb.toString();
                 br.close();
             }
             catch (Exception e) {
                 e.printStackTrace();
             }
+            // add the words to the Hash map
+            // contains 3 entries, one for each file
             input.put(fileName,everything);
         }
 
 
-//        // APPROACH #1: Brute force
-//        {
-//            Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
-//
-//            Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
-//            while(inputIter.hasNext()) {
-//                Map.Entry<String, String> entry = inputIter.next();
-//                String file = entry.getKey();
-//                String contents = entry.getValue();
-//
-//                String[] words = contents.trim().split("\\s+");
-//
-//                for(String word : words) {
-//
-//                    Map<String, Integer> files = output.get(word);
-//                    if (files == null) {
-//                        files = new HashMap<String, Integer>();
-//                        output.put(word, files);
-//                    }
-//
-//                    Integer occurrences = files.remove(file);
-//                    if (occurrences == null) {
-//                        files.put(file, 1);
-//                    } else {
-//                        files.put(file, occurrences.intValue() + 1);
-//                    }
-//                }
-//            }
-//
-//            // show me:
+        // APPROACH #1: Brute force
+        {
+            // create a map containing String and another map.
+            // inner map contains a String and in
+            //
+            // MAP ( String, MAP(String, int) )
+            //
+            Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
+
+            Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
+            // while the input contains another entry
+            // (should contain 3 entries -- one for each file)
+            while(inputIter.hasNext()) {
+                // get the file name and the string containing all words
+                Map.Entry<String, String> entry = inputIter.next();
+                // get the key (filename)
+                String file = entry.getKey();
+                // get the value (words)
+                String contents = entry.getValue();
+                // split the string containing the words into an
+                // array of words
+                String[] words = contents.trim().split("\\s+");
+
+                // LOOP THROUGH EACH WORD FOR A GIVEN FILE
+                for(String word : words) {
+                    // files = {file1.txt=1,
+                    // get the file and number of occurrences for a given word
+                    Map<String, Integer> files = output.get(word);
+                    // one FIRST iteration, the output map will NOT contain any entries
+                    // ==> file will be null
+                    if (files == null) {
+                        // create map to assign it as the value of the output map
+                        files = new HashMap<String, Integer>();
+                        // this map consists of the of the word, and a map of files and occurrences
+                        output.put(word, files);
+                    }
+                    // remove the file name from the map of file names and occurrences
+                    Integer occurrences = files.remove(file);
+                    if (occurrences == null) {
+                        // put the name of the file and the number of occurrences into the files map
+                        files.put(file, 1);
+                    } else {
+                        // put the name of the file and the number of occurrences into the files map
+                        files.put(file, occurrences.intValue() + 1);
+                    }
+                }
+            }
+
+            // show me:
 //            System.out.println("\nApproach 1:");
 //            System.out.println(output);
-//        }
+        }
 
 //
 //        // APPROACH #2: MapReduce
@@ -127,100 +163,100 @@ public class MapReduce {
 //        }
 
 
-        // APPROACH #3: Distributed MapReduce
-        {
-            final Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
-
-            // MAP:
-
-            final List<MappedItem> mappedItems = new LinkedList<MappedItem>();
-
-            final MapCallback<String, MappedItem> mapCallback = new MapCallback<String, MappedItem>() {
-                @Override
-                public synchronized void mapDone(String file, List<MappedItem> results) {
-                    mappedItems.addAll(results);
-                }
-            };
-
-            Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
-            ExecutorService mapPool = Executors.newFixedThreadPool(poolSize);
-            while(inputIter.hasNext()) {
-                Map.Entry<String, String> entry = inputIter.next();
-                final String file = entry.getKey();
-                final String contents = entry.getValue();
-
-                Thread t = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        map(file, contents, mapCallback);
-                    }
-                });
-                //Adding thread to threadpool
-                mapPool.execute(t);
-            }
-            //Ensures all threads complete
-            mapPool.shutdown();
-            long mapTimer = 0;
-            //Not sure if this is good practice
-            while (!mapPool.isTerminated()) {
-                mapTimer++;
-            }
-            System.out.println("Finished all map threads in " + mapTimer + " iterations");
-
-            // GROUP:
-
-            Map<String, List<String>> groupedItems = new HashMap<String, List<String>>();
-
-            Iterator<MappedItem> mappedIter = mappedItems.iterator();
-            while(mappedIter.hasNext()) {
-                MappedItem item = mappedIter.next();
-                String word = item.getWord();
-                String file = item.getFile();
-                List<String> list = groupedItems.get(word);
-                if (list == null) {
-                    list = new LinkedList<String>();
-                    groupedItems.put(word, list);
-                }
-                list.add(file);
-            }
-
-            // REDUCE:
-
-            final ReduceCallback<String, String, Integer> reduceCallback = new ReduceCallback<String, String, Integer>() {
-                @Override
-                public synchronized void reduceDone(String k, Map<String, Integer> v) {
-                    output.put(k, v);
-                }
-            };
-
-            Iterator<Map.Entry<String, List<String>>> groupedIter = groupedItems.entrySet().iterator();
-            ExecutorService reducePool = Executors.newFixedThreadPool(poolSize);
-            while(groupedIter.hasNext()) {
-                Map.Entry<String, List<String>> entry = groupedIter.next();
-                final String word = entry.getKey();
-                final List<String> list = entry.getValue();
-
-                Thread t = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        reduce(word, list, reduceCallback);
-                    }
-                });
-                reducePool.execute(t);
-            }
-
-            //Ensures all threads complete
-            reducePool.shutdown();
-            long reduceTimer = 0;
-            //Not sure if this is good practice
-            while (!reducePool.isTerminated()) {
-                reduceTimer++;
-            }
-            System.out.println("Finished all reduce threads in " + reduceTimer + " iterations");
-
-            System.out.println("\nApproach 3:");
-            System.out.println(output);
-        }
+//        // APPROACH #3: Distributed MapReduce
+//        {
+//            final Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
+//
+//            // MAP:
+//
+//            final List<MappedItem> mappedItems = new LinkedList<MappedItem>();
+//
+//            final MapCallback<String, MappedItem> mapCallback = new MapCallback<String, MappedItem>() {
+//                @Override
+//                public synchronized void mapDone(String file, List<MappedItem> results) {
+//                    mappedItems.addAll(results);
+//                }
+//            };
+//
+//            Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
+//            ExecutorService mapPool = Executors.newFixedThreadPool(poolSize);
+//            while(inputIter.hasNext()) {
+//                Map.Entry<String, String> entry = inputIter.next();
+//                final String file = entry.getKey();
+//                final String contents = entry.getValue();
+//
+//                Thread t = new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        map(file, contents, mapCallback);
+//                    }
+//                });
+//                //Adding thread to threadpool
+//                mapPool.execute(t);
+//            }
+//            //Ensures all threads complete
+//            mapPool.shutdown();
+//            long mapTimer = 0;
+//            //Not sure if this is good practice
+//            while (!mapPool.isTerminated()) {
+//                mapTimer++;
+//            }
+//            System.out.println("Finished all map threads in " + mapTimer + " iterations");
+//
+//            // GROUP:
+//
+//            Map<String, List<String>> groupedItems = new HashMap<String, List<String>>();
+//
+//            Iterator<MappedItem> mappedIter = mappedItems.iterator();
+//            while(mappedIter.hasNext()) {
+//                MappedItem item = mappedIter.next();
+//                String word = item.getWord();
+//                String file = item.getFile();
+//                List<String> list = groupedItems.get(word);
+//                if (list == null) {
+//                    list = new LinkedList<String>();
+//                    groupedItems.put(word, list);
+//                }
+//                list.add(file);
+//            }
+//
+//            // REDUCE:
+//
+//            final ReduceCallback<String, String, Integer> reduceCallback = new ReduceCallback<String, String, Integer>() {
+//                @Override
+//                public synchronized void reduceDone(String k, Map<String, Integer> v) {
+//                    output.put(k, v);
+//                }
+//            };
+//
+//            Iterator<Map.Entry<String, List<String>>> groupedIter = groupedItems.entrySet().iterator();
+//            ExecutorService reducePool = Executors.newFixedThreadPool(poolSize);
+//            while(groupedIter.hasNext()) {
+//                Map.Entry<String, List<String>> entry = groupedIter.next();
+//                final String word = entry.getKey();
+//                final List<String> list = entry.getValue();
+//
+//                Thread t = new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        reduce(word, list, reduceCallback);
+//                    }
+//                });
+//                reducePool.execute(t);
+//            }
+//
+//            //Ensures all threads complete
+//            reducePool.shutdown();
+//            long reduceTimer = 0;
+//            //Not sure if this is good practice
+//            while (!reducePool.isTerminated()) {
+//                reduceTimer++;
+//            }
+//            System.out.println("Finished all reduce threads in " + reduceTimer + " iterations");
+//
+//            System.out.println("\nApproach 3:");
+//            System.out.println(output);
+//        }
     }
 
     public static void map(String file, String contents, List<MappedItem> mappedItems) {
