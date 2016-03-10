@@ -16,7 +16,7 @@ public class MapReduce {
         //TODO make this a command line input
         int poolSize = args.length;
 
-        //PART 1 - Taking input from a list of text files
+        //PART 1 -
         Map<String, String> input = new HashMap<String, String>();
         for(String fileName:args) {
             String everything = "";
