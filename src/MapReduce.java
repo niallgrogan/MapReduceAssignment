@@ -1,3 +1,8 @@
+/*
+ * Niall Grogan - 12429338
+ * Stephen Dooley - 12502947
+ */
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.ArrayList;
