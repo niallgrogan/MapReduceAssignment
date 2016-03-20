@@ -60,58 +60,58 @@ public class MapReduce {
         }
 
 
-        // APPROACH #1: Brute force
-        {
-            // create a map containing String and another map.
-            // inner map contains a String and in
-            //
-            // MAP ( String, MAP(String, int) )
-            //
-            Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
-
-            Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
-            // while the input contains another entry
-            // (should contain 3 entries -- one for each file)
-            while(inputIter.hasNext()) {
-                // get the file name and the string containing all words
-                Map.Entry<String, String> entry = inputIter.next();
-                // get the key (filename)
-                String file = entry.getKey();
-                // get the value (words)
-                String contents = entry.getValue();
-                // split the string containing the words into an
-                // array of words
-                String[] words = contents.trim().split("\\s+");
-
-                // LOOP THROUGH EACH WORD FOR A GIVEN FILE
-                for(String word : words) {
-                    // files = {file1.txt=1,
-                    // get the file and number of occurrences for a given word
-                    Map<String, Integer> files = output.get(word);
-                    // one FIRST iteration, the output map will NOT contain any entries
-                    // ==> file will be null
-                    if (files == null) {
-                        // create map to assign it as the value of the output map
-                        files = new HashMap<String, Integer>();
-                        // this map consists of the of the word, and a map of files and occurrences
-                        output.put(word, files);
-                    }
-                    // remove the file name from the map of file names and occurrences
-                    Integer occurrences = files.remove(file);
-                    if (occurrences == null) {
-                        // put the name of the file and the number of occurrences into the files map
-                        files.put(file, 1);
-                    } else {
-                        // put the name of the file and the number of occurrences into the files map
-                        files.put(file, occurrences.intValue() + 1);
-                    }
-                }
-            }
-
-            // show me:
-//            System.out.println("\nApproach 1:");
-//            System.out.println(output);
-        }
+//        // APPROACH #1: Brute force
+//        {
+//            // create a map containing String and another map.
+//            // inner map contains a String and in
+//            //
+//            // MAP ( String, MAP(String, int) )
+//            //
+//            Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
+//
+//            Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
+//            // while the input contains another entry
+//            // (should contain 3 entries -- one for each file)
+//            while(inputIter.hasNext()) {
+//                // get the file name and the string containing all words
+//                Map.Entry<String, String> entry = inputIter.next();
+//                // get the key (filename)
+//                String file = entry.getKey();
+//                // get the value (words)
+//                String contents = entry.getValue();
+//                // split the string containing the words into an
+//                // array of words
+//                String[] words = contents.trim().split("\\s+");
+//
+//                // LOOP THROUGH EACH WORD FOR A GIVEN FILE
+//                for(String word : words) {
+//                    // files = {file1.txt=1,
+//                    // get the file and number of occurrences for a given word
+//                    Map<String, Integer> files = output.get(word);
+//                    // one FIRST iteration, the output map will NOT contain any entries
+//                    // ==> file will be null
+//                    if (files == null) {
+//                        // create map to assign it as the value of the output map
+//                        files = new HashMap<String, Integer>();
+//                        // this map consists of the of the word, and a map of files and occurrences
+//                        output.put(word, files);
+//                    }
+//                    // remove the file name from the map of file names and occurrences
+//                    Integer occurrences = files.remove(file);
+//                    if (occurrences == null) {
+//                        // put the name of the file and the number of occurrences into the files map
+//                        files.put(file, 1);
+//                    } else {
+//                        // put the name of the file and the number of occurrences into the files map
+//                        files.put(file, occurrences.intValue() + 1);
+//                    }
+//                }
+//            }
+//
+//            // show me:
+////            System.out.println("\nApproach 1:");
+////            System.out.println(output);
+//        }
 
 //
 //        // APPROACH #2: MapReduce
@@ -165,7 +165,7 @@ public class MapReduce {
 
 
         // APPROACH #3: Distributed MapReduce
-        {
+        { // APPROACH #3: Distributed MapReduce
             final Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
 
             // MAP:
