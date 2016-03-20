@@ -13,10 +13,11 @@ public class MapReduce {
 
     public static void main(String[] args) {
 
-//        // get number of files to be reduced from the user
-//        Scanner reader = new Scanner(System.in);
-//        System.out.println("Enter the number of files in database:");
-//        int poolSize = reader.nextInt();
+        // get number of files to be reduced from the user
+        Scanner reader = new Scanner(System.in);
+        //System.out.println("Enter the number of files in database:");
+        //int poolSize = reader.nextInt();
+        int poolSize = 3;
 
         //PART 1
         // create an input with the name of a file and a String
@@ -163,100 +164,195 @@ public class MapReduce {
 //        }
 
 
-//        // APPROACH #3: Distributed MapReduce
-//        {
-//            final Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
-//
-//            // MAP:
-//
-//            final List<MappedItem> mappedItems = new LinkedList<MappedItem>();
-//
-//            final MapCallback<String, MappedItem> mapCallback = new MapCallback<String, MappedItem>() {
-//                @Override
-//                public synchronized void mapDone(String file, List<MappedItem> results) {
-//                    mappedItems.addAll(results);
-//                }
-//            };
-//
-//            Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
-//            ExecutorService mapPool = Executors.newFixedThreadPool(poolSize);
-//            while(inputIter.hasNext()) {
-//                Map.Entry<String, String> entry = inputIter.next();
-//                final String file = entry.getKey();
-//                final String contents = entry.getValue();
-//
-//                Thread t = new Thread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        map(file, contents, mapCallback);
-//                    }
-//                });
-//                //Adding thread to threadpool
-//                mapPool.execute(t);
-//            }
-//            //Ensures all threads complete
-//            mapPool.shutdown();
-//            long mapTimer = 0;
-//            //Not sure if this is good practice
-//            while (!mapPool.isTerminated()) {
-//                mapTimer++;
-//            }
-//            System.out.println("Finished all map threads in " + mapTimer + " iterations");
-//
-//            // GROUP:
-//
-//            Map<String, List<String>> groupedItems = new HashMap<String, List<String>>();
-//
-//            Iterator<MappedItem> mappedIter = mappedItems.iterator();
-//            while(mappedIter.hasNext()) {
-//                MappedItem item = mappedIter.next();
-//                String word = item.getWord();
-//                String file = item.getFile();
-//                List<String> list = groupedItems.get(word);
-//                if (list == null) {
-//                    list = new LinkedList<String>();
-//                    groupedItems.put(word, list);
-//                }
-//                list.add(file);
-//            }
-//
-//            // REDUCE:
-//
-//            final ReduceCallback<String, String, Integer> reduceCallback = new ReduceCallback<String, String, Integer>() {
-//                @Override
-//                public synchronized void reduceDone(String k, Map<String, Integer> v) {
-//                    output.put(k, v);
-//                }
-//            };
-//
-//            Iterator<Map.Entry<String, List<String>>> groupedIter = groupedItems.entrySet().iterator();
-//            ExecutorService reducePool = Executors.newFixedThreadPool(poolSize);
-//            while(groupedIter.hasNext()) {
-//                Map.Entry<String, List<String>> entry = groupedIter.next();
-//                final String word = entry.getKey();
-//                final List<String> list = entry.getValue();
-//
-//                Thread t = new Thread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        reduce(word, list, reduceCallback);
-//                    }
-//                });
-//                reducePool.execute(t);
-//            }
-//
-//            //Ensures all threads complete
-//            reducePool.shutdown();
-//            long reduceTimer = 0;
-//            //Not sure if this is good practice
-//            while (!reducePool.isTerminated()) {
-//                reduceTimer++;
-//            }
-//            System.out.println("Finished all reduce threads in " + reduceTimer + " iterations");
-//
-//            System.out.println("\nApproach 3:");
-//            System.out.println(output);
-//        }
+        // APPROACH #3: Distributed MapReduce
+        {
+            final Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
+
+            // MAP:
+
+            final List<MappedItem> mappedItems = new LinkedList<MappedItem>();
+
+            final MapCallback<String, MappedItem> mapCallback = new MapCallback<String, MappedItem>() {
+                @Override
+                public synchronized void mapDone(String file, List<MappedItem> results) {
+                    mappedItems.addAll(results);
+                }
+            };
+
+            Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
+            ExecutorService mapPool = Executors.newFixedThreadPool(poolSize);
+            while(inputIter.hasNext()) {
+                Map.Entry<String, String> entry = inputIter.next();
+                final String file = entry.getKey();
+                final String contents = entry.getValue();
+
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        map(file, contents, mapCallback);
+                    }
+                });
+                //Adding thread to threadpool
+                mapPool.execute(t);
+            }
+            //Ensures all threads complete
+            mapPool.shutdown();
+            long startTime = System.nanoTime();
+            //Not sure if this is good practice
+            while (!mapPool.isTerminated()) {}
+            long time = System.nanoTime() - startTime;
+
+            System.out.println("Finished all map threads in " + time + "ns");
+
+            // GROUP:
+
+            Map<String, List<String>> groupedItems = new HashMap<String, List<String>>();
+
+            Iterator<MappedItem> mappedIter = mappedItems.iterator();
+            while(mappedIter.hasNext()) {
+                MappedItem item = mappedIter.next();
+                String word = item.getWord();
+                String file = item.getFile();
+                List<String> list = groupedItems.get(word);
+                if (list == null) {
+                    list = new LinkedList<String>();
+                    groupedItems.put(word, list);
+                }
+                list.add(file);
+            }
+
+            // REDUCE:
+
+            final ReduceCallback<String, String, Integer> reduceCallback = new ReduceCallback<String, String, Integer>() {
+                @Override
+                public synchronized void reduceDone(String k, Map<String, Integer> v) {
+                    output.put(k, v);
+                }
+            };
+
+            Iterator<Map.Entry<String, List<String>>> groupedIter = groupedItems.entrySet().iterator();
+            ExecutorService reducePool = Executors.newFixedThreadPool(poolSize);
+            while(groupedIter.hasNext()) {
+                Map.Entry<String, List<String>> entry = groupedIter.next();
+                final String word = entry.getKey();
+                final List<String> list = entry.getValue();
+
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        reduce(word, list, reduceCallback);
+                    }
+                });
+                reducePool.execute(t);
+            }
+
+            //Ensures all threads complete
+            reducePool.shutdown();
+            long startTimeReduce = System.nanoTime();
+            //Not sure if this is good practice
+            while (!reducePool.isTerminated()) {}
+            long timeReduce = System.nanoTime() - startTimeReduce;
+
+            System.out.println("Finished all reduce threads in " + timeReduce + "ns");
+
+            System.out.println("\nApproach 3:");
+            System.out.println(output);
+        }
+
+        // APPROACH #4: Distributed MapReduce with Concurrent Data Structures
+        {
+            final Map<String, Map<String, Integer>> output = new HashMap<String, Map<String, Integer>>();
+
+            // MAP:
+
+            final List<MappedItem> mappedItems = new LinkedList<MappedItem>();
+
+            final MapCallback<String, MappedItem> mapCallback = new MapCallback<String, MappedItem>() {
+                @Override
+                public synchronized void mapDone(String file, List<MappedItem> results) {
+                    mappedItems.addAll(results);
+                }
+            };
+
+            Iterator<Map.Entry<String, String>> inputIter = input.entrySet().iterator();
+            ExecutorService mapPool = Executors.newFixedThreadPool(poolSize);
+            while(inputIter.hasNext()) {
+                Map.Entry<String, String> entry = inputIter.next();
+                final String file = entry.getKey();
+                final String contents = entry.getValue();
+
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        map(file, contents, mapCallback);
+                    }
+                });
+                //Adding thread to threadpool
+                mapPool.execute(t);
+            }
+            //Ensures all threads complete
+            mapPool.shutdown();
+            long startTime = System.nanoTime();
+            //Not sure if this is good practice
+            while (!mapPool.isTerminated()) {}
+            long time = System.nanoTime() - startTime;
+
+            System.out.println("Finished all map threads in " + time + "ns");
+
+            // GROUP:
+
+            Map<String, List<String>> groupedItems = new HashMap<String, List<String>>();
+
+            Iterator<MappedItem> mappedIter = mappedItems.iterator();
+            while(mappedIter.hasNext()) {
+                MappedItem item = mappedIter.next();
+                String word = item.getWord();
+                String file = item.getFile();
+                List<String> list = groupedItems.get(word);
+                if (list == null) {
+                    list = new LinkedList<String>();
+                    groupedItems.put(word, list);
+                }
+                list.add(file);
+            }
+
+            // REDUCE:
+
+            final ReduceCallback<String, String, Integer> reduceCallback = new ReduceCallback<String, String, Integer>() {
+                @Override
+                public synchronized void reduceDone(String k, Map<String, Integer> v) {
+                    output.put(k, v);
+                }
+            };
+
+            Iterator<Map.Entry<String, List<String>>> groupedIter = groupedItems.entrySet().iterator();
+            ExecutorService reducePool = Executors.newFixedThreadPool(poolSize);
+            while(groupedIter.hasNext()) {
+                Map.Entry<String, List<String>> entry = groupedIter.next();
+                final String word = entry.getKey();
+                final List<String> list = entry.getValue();
+
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        reduce(word, list, reduceCallback);
+                    }
+                });
+                reducePool.execute(t);
+            }
+
+            //Ensures all threads complete
+            reducePool.shutdown();
+            long startTimeReduce = System.nanoTime();
+            //Not sure if this is good practice
+            while (!reducePool.isTerminated()) {}
+            long timeReduce = System.nanoTime() - startTimeReduce;
+
+            System.out.println("Finished all reduce threads in " + timeReduce + "ns");
+
+            System.out.println("\nApproach 3:");
+            System.out.println(output);
+        }
     }
 
     public static void map(String file, String contents, List<MappedItem> mappedItems) {
