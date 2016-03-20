@@ -109,8 +109,8 @@ public class MapReduce {
             }
 
             // show me:
-//            System.out.println("\nApproach 1:");
-//            System.out.println(output);
+//          System.out.println("\nApproach 1:");
+//          System.out.println(output);
         }
 
 //
